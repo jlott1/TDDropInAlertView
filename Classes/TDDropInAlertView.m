@@ -24,6 +24,29 @@
 @dynamic visible;
 @dynamic firstOtherButtonIndex;
 
++ (NSMutableArray*)alertViewCollection {
+    static NSMutableArray* alertViewCollection;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        alertViewCollection = [[NSMutableArray alloc] init];
+    });
+    return alertViewCollection;
+}
+
++ (void)addShowingAlertView:(TDDropInAlertView*)alertView {
+    @synchronized(self) {
+        if(![[self alertViewCollection] containsObject:alertView]) {
+            [[self alertViewCollection] addObject:alertView];
+        }
+    }
+}
+
++ (void)removeAlertView:(TDDropInAlertView*)alertView {
+    if([[self alertViewCollection] containsObject:alertView]) {
+        [[self alertViewCollection] removeObject:alertView];
+    }
+}
+
 #pragma mark - Initialization
 
 - (nonnull instancetype)init
@@ -40,6 +63,8 @@
     if (self = [super init]) {
         
         _alertController = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+        
+        _delegate = delegate;
         
         __weak typeof(self) weakSelf = self;
         
@@ -65,6 +90,11 @@
         
     }
     return self;
+}
+
+- (void)dealloc
+{
+    NSLog(@"TDDropInAlertView - dealloc");
 }
 
 #pragma mark - Properties
@@ -127,7 +157,7 @@
 
 - (void)handleButtonAtIndex:(NSUInteger)idx
 {
-    if ([self respondsToSelector:@selector(alertView:clickedButtonAtIndex:)]) {
+    if ([self.delegate respondsToSelector:@selector(alertView:clickedButtonAtIndex:)]) {
         [self.delegate alertView:self clickedButtonAtIndex:idx];
     }
     [self dismissWithClickedButtonIndex:idx animated:YES];
@@ -165,6 +195,8 @@
     [self.alertController dismissViewControllerAnimated:animated completion:^{
         if ([self.delegate respondsToSelector:@selector(alertView:didDismissWithButtonIndex:)]) {
             [self.delegate alertView:self didDismissWithButtonIndex:buttonIndex];
+            //must release self
+            [TDDropInAlertView removeAlertView:self];
         }
     }];
     
@@ -186,7 +218,8 @@
             [self.delegate didPresentAlertView:self];
         }
     }];
-    
+    // must retain self
+    [TDDropInAlertView addShowingAlertView:self];
 }
 
 @end
