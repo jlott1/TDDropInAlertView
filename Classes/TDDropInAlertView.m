@@ -212,7 +212,9 @@
     }
     
     UIViewController *viewController = [[[UIApplication sharedApplication] keyWindow] rootViewController];
-    
+    if(viewController.presentedViewController) {
+        viewController = viewController.presentedViewController;
+    }
     [viewController presentViewController:self.alertController animated:true completion:^{
         if ([self.delegate respondsToSelector:@selector(didPresentAlertView:)]) {
             [self.delegate didPresentAlertView:self];
